@@ -2,6 +2,8 @@
 import streamlit as st
 from typing import Dict
 from datetime import datetime
+import pytz
+
 
 def display_data_sources_info():
     """Show users what data comes from where"""
@@ -108,7 +110,7 @@ def display_main_decision(analysis: Dict):
 def display_header_info(current_spy: float, price_source: str, trading_window_ok: bool, 
                        window_message: str, sandbox_mode: bool):
     """Display header information"""
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S ET")
+    current_time = datetime.now(pytz.timezone('US/Eastern')).strftime("%Y-%m-%d %H:%M:%S ET")
     
     col1, col2, col3 = st.columns([2, 1, 1])
     with col1:
