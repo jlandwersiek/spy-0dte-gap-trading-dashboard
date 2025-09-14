@@ -65,26 +65,20 @@ def display_main_decision(analysis: Dict):
         st.markdown("---")
     
     # Show the final decision with appropriate coloring
-    if final_decision.startswith("NO TRADE - OUTSIDE"):
-        decision_color = '⏰'
-        decision_bg_color = '#fff3cd'  # Warning yellow
-        border_color = '#ffc107'
-        decision_display = "NO TRADE - OUTSIDE WINDOW"
-    else:
-        decision_color = {
-            'STRONG LONG': '🟢', 'MODERATE LONG': '🟡', 
-            'STRONG SHORT': '🔴', 'MODERATE SHORT': '🟠',
-            'NO TRADE': '⚪'
-        }.get(final_decision, '⚪')
-        
-        decision_bg_color = {
-            'STRONG LONG': '#d4edda', 'MODERATE LONG': '#fff3cd', 
-            'STRONG SHORT': '#f8d7da', 'MODERATE SHORT': '#ffeaa7',
-            'NO TRADE': '#e2e3e5'
-        }.get(final_decision, '#e2e3e5')
-        
-        border_color = '#007bff'
-        decision_display = final_decision
+    decision_color = {
+        'STRONG LONG': '🟢', 'MODERATE LONG': '🟡', 
+        'STRONG SHORT': '🔴', 'MODERATE SHORT': '🟠',
+        'NO TRADE': '⚪'
+    }.get(final_decision, '⚪')
+    
+    decision_bg_color = {
+        'STRONG LONG': '#d4edda', 'MODERATE LONG': '#fff3cd', 
+        'STRONG SHORT': '#f8d7da', 'MODERATE SHORT': '#ffeaa7',
+        'NO TRADE': '#e2e3e5'
+    }.get(final_decision, '#e2e3e5')
+    
+    border_color = '#007bff'
+    decision_display = final_decision
     
     st.markdown(f"""
     <div style="text-align: center; padding: 30px; background: {decision_bg_color}; 
@@ -97,15 +91,6 @@ def display_main_decision(analysis: Dict):
         </p>
     </div>
     """, unsafe_allow_html=True)
-    
-    # Show timing warning if present
-    if timing_warning:
-        if "DANGER ZONE" in timing_warning or "theta burn" in timing_warning:
-            st.error(f"🚨 {timing_warning}")
-        elif "ANALYSIS ONLY" in timing_warning:
-            st.info(f"📊 {timing_warning}")
-        else:
-            st.warning(f"⚠️ {timing_warning}")
 
 def display_header_info(current_spy: float, price_source: str, trading_window_ok: bool, 
                        window_message: str, sandbox_mode: bool):
@@ -114,7 +99,7 @@ def display_header_info(current_spy: float, price_source: str, trading_window_ok
     
     col1, col2, col3 = st.columns([2, 1, 1])
     with col1:
-        st.info(f"🕐 Current Time: {current_time}")
+        st.info(f"🕘 Current Time: {current_time}")
     with col2:
         if trading_window_ok:
             st.success(f"✅ Trading Window Open")
@@ -160,7 +145,7 @@ def display_price_targets(current_spy: float, price_targets: Dict):
             st.write(f"• {reason}")
 
 def display_market_analysis_details(analysis: Dict):
-    """Display detailed market analysis breakdown"""
+    """Display detailed market analysis breakdown with breadth weighting transparency"""
     st.header("📋 Market Analysis Breakdown")
     
     # Gap Analysis Detail
@@ -189,34 +174,87 @@ def display_market_analysis_details(analysis: Dict):
                 st.metric("Total Gap Points", f"{gap['total_points']:.1f}")
                 st.caption("Weighted score")
     
-    # Market Internals Detail
+    # Market Internals Detail with Breadth Weighting Info
     with st.expander("🏛️ Market Internals - Proxy Calculations", expanded=False):
         internals = analysis['internals']
         
+        # Show breadth weighting if applied
+        if internals.get('breadth_reliability') and internals.get('breadth_reliability') != 'HIGH':
+            reliability = internals['breadth_reliability']
+            if 'original_breadth_score' in internals:
+                original = internals['original_breadth_score']
+                weighted = internals['breadth_score']
+                st.warning(f"⚠️ **BREADTH WEIGHTING APPLIED:** Reliability {reliability} - Internals score reduced from {original:.1f} to {weighted:.1f}")
+        
+        st.info("📊 **Data Source:** Enhanced Proxy (11+ ETFs) - Not Real Breadth Data")
+        
         col1, col2, col3, col4 = st.columns(4)
+        
+        # TICK
         with col1:
-            st.metric("$TICK Proxy", f"{internals['tick']['value']:,.0f}")
-            st.caption(f"Signal: {internals['tick']['signal']}")
-                
+            if 'tick' in internals and internals['tick']:
+                st.metric("$TICK Proxy", f"{internals['tick']['value']:,.0f}")
+                st.caption(f"Signal: {internals['tick']['signal']}")
+                st.caption(f"Source: {internals['tick'].get('source', 'Proxy')}")
+            else:
+                st.metric("$TICK Proxy", "N/A")
+                st.caption("No data available")
+        
+        # TRIN        
         with col2:
-            st.metric("$TRIN Proxy", f"{internals['trin']['value']:.3f}")
-            st.caption(f"Signal: {internals['trin']['signal']}")
-                
+            if 'trin' in internals and internals['trin']:
+                st.metric("$TRIN Proxy", f"{internals['trin']['value']:.3f}")
+                st.caption(f"Signal: {internals['trin']['signal']}")
+                st.caption(f"Source: {internals['trin'].get('source', 'Proxy')}")
+            else:
+                st.metric("$TRIN Proxy", "N/A")
+                st.caption("No data available")
+        
+        # NYAD        
         with col3:
-            st.metric("NYAD Proxy", f"{internals['nyad']['value']:,.0f}")
-            st.caption(f"Signal: {internals['nyad']['signal']}")
-            
+            if 'nyad' in internals and internals['nyad']:
+                st.metric("NYAD Proxy", f"{internals['nyad']['value']:,.0f}")
+                st.caption(f"Signal: {internals['nyad']['signal']}")
+                st.caption(f"Source: {internals['nyad'].get('source', 'Proxy')}")
+            else:
+                st.metric("NYAD Proxy", "N/A")
+                st.caption("No data available")
+        
+        # VOLD (with fallback handling)
         with col4:
-            st.metric("Volume Flow", f"{internals['vold']['value']:.2f}")
-            st.caption(f"Signal: {internals['vold']['signal']}")
+            if 'vold' in internals and internals['vold']:
+                st.metric("Volume Flow", f"{internals['vold']['value']:.2f}")
+                st.caption(f"Signal: {internals['vold']['signal']}")
+                st.caption(f"Source: {internals['vold'].get('source', 'Proxy')}")
+            else:
+                # Fallback calculation if vold is missing
+                tick_val = internals.get('tick', {}).get('value', 0) if 'tick' in internals else 0
+                trin_val = internals.get('trin', {}).get('value', 1.0) if 'trin' in internals else 1.0
+                
+                # Simple volume flow estimate
+                if tick_val > 500 and trin_val < 0.9:
+                    vold_est = 1.8
+                    vold_signal = "BULLISH"
+                elif tick_val < -500 and trin_val > 1.1:
+                    vold_est = 0.4
+                    vold_signal = "BEARISH"
+                else:
+                    vold_est = 1.0
+                    vold_signal = "NEUTRAL"
+                
+                st.metric("Volume Flow", f"{vold_est:.2f}")
+                st.caption(f"Signal: {vold_signal} (Est.)")
+                st.caption("Source: Estimated")
     
     # Enhanced Trend Analysis
     with st.expander("🆕 Enhanced Trend Analysis", expanded=False):
         trend_analysis = analysis.get('trend_analysis', {})
         momentum_shift = analysis.get('momentum_shift', {})
         dynamic_vwap = analysis.get('dynamic_vwap', {})
-    
+        
         if trend_analysis:
+            st.info("📊 **Data Source:** Real SPY price data with calculated indicators")
+            
             col1, col2, col3 = st.columns(3)
         
             with col1:
@@ -240,28 +278,39 @@ def display_market_analysis_details(analysis: Dict):
                 • Volume acceleration: {momentum_shift.get('volume_acceleration', 1):.1f}x
                 • Contributing {momentum_shift.get('shift_points', 0):+.1f} points to decision
                 """)
+        else:
+            st.info("📊 Trend analysis data not available")
 
-def display_final_recommendation(analysis: Dict, trading_window_ok: bool, window_message: str):
-    """Display final trading recommendation"""
+def display_final_recommendation(analysis: Dict, window_info: Dict):
+    """Display final trading recommendation with timing context"""
     st.header("🎯 Final Trading Recommendation")
     
-    if analysis['decision'] != 'NO TRADE' and trading_window_ok:
-        st.success(f"""
-        ✅ **EXECUTE TRADE: {analysis['decision']}**
+    decision = analysis['decision']
+    
+    if decision != 'NO TRADE':
+        # Show the signal with timing context
+        if window_info.get('timing_warning'):
+            st.success(f"✅ **SIGNAL: {decision}**")
+            if window_info['color'] == 'warning':
+                st.warning(f"⚠️ **EXECUTION CAUTION:** {window_info['timing_warning']}")
+            elif window_info['status'] == 'MARKET CLOSED':
+                st.info(f"📋 **PLAN FOR TOMORROW:** {window_info['timing_warning']}")
+            else:
+                st.info(f"ℹ️ **TIMING NOTE:** {window_info['timing_warning']}")
+        else:
+            st.success(f"✅ **EXECUTE TRADE: {decision}** - Optimal timing window")
         
+        # Signal breakdown
+        st.info(f"""
         **Signal Breakdown:**
         • Gap Analysis: {analysis['gap_analysis'].get('total_points', 0):.1f} points
-        • Market Internals: {analysis['internals'].get('total_points', 0):.1f} points  
+        • Market Internals: {analysis['internals'].get('total_points', 0):.1f} points (weighted {window_info['breadth_weight']*100:.0f}%)
         • Sector Leadership: {analysis['sectors_enhanced'].get('total_points', 0):.1f} points
         • Technical Analysis: {analysis['technicals_enhanced'].get('total_points', 0):.1f} points
         • Trend Analysis: {analysis.get('decision_breakdown', {}).get('trend_contribution', 0):.1f} points
         """)
-    elif not trading_window_ok:
-        st.info(f"⏰ **MARKET STATUS** - {window_message}")
         
-        if "closed" in window_message.lower():
-            st.markdown("### 📊 After-Hours Analysis Available")
-            st.write("Current analysis is based on last available market data.")
-            st.write("This can help you prepare for tomorrow's trading session.")
     else:
         st.error("❌ **NO TRADE** - Insufficient signals or unfavorable conditions")
+        if window_info['status'] != 'MARKET CLOSED':
+            st.info("Wait for stronger signals or better timing window.")
