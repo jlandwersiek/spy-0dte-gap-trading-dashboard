@@ -127,7 +127,9 @@ class SectorAnalyzer:
                 try:
                     hist = get_cached_yahoo_data(symbol, '1d', '1m')
                     if not hist.empty:
-                        change_pct = ((hist['Close'].iloc[-1] - hist['Open'].iloc[0]) / hist['Open'].iloc[0]) * 100
+                        open_price = float(hist['Open'].iloc[0])
+                        close_price = float(hist['Close'].iloc[-1])
+                        change_pct = ((close_price - open_price) / open_price) * 100
                         sector_data[symbol] = {
                             'current_price': hist['Close'].iloc[-1],
                             'change_pct': change_pct,
